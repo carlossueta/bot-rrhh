@@ -17,7 +17,7 @@ app = Flask(__name__)
 # ─── CONFIGURACIÓN ───────────────────────────────────────────────────────────
 CALLBELL_API_TOKEN = os.environ.get("CALLBELL_API_TOKEN", "bDfAzWJk9pMj5y8Y3U4RzuzzU9WSXYea.dd284001db7b17a762da3c3ce9edee1e8b98117b69b5b97dd8c484a7e98499cc")
 SPREADSHEET_ID     = "1nEpSfYuIGeZ-PF9FNNaGuYHN5m1fl-izoEXoStrfqLk"
-GOOGLE_CREDS_JSON  = r"c:\Users\carlo\OneDrive\Desktop\Python\BOT HR\bot-hhrr-622fa7f9a2ce.json"
+GOOGLE_CREDS_JSON = os.environ.get("GOOGLE_CREDS_JSON", r"c:\Users\carlo\OneDrive\Desktop\Python\BOT HR\bot-hhrr-622fa7f9a2ce.json")
 
 # ─── CONEXIÓN A GOOGLE SHEETS ─────────────────────────────────────────────────
 def get_sheets_client():
@@ -25,7 +25,13 @@ def get_sheets_client():
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    creds = Credentials.from_service_account_file(GOOGLE_CREDS_JSON, scopes=scopes)
+    # Si es un archivo local, cargarlo directamente
+    if os.path.exists(GOOGLE_CREDS_JSON):
+        creds = Credentials.from_service_account_file(GOOGLE_CREDS_JSON, scopes=scopes)
+    else:
+        # En Render viene como string JSON en variable de entorno
+        creds_dict = json.loads(GOOGLE_CREDS_JSON)
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     return gspread.authorize(creds)
 
 def get_sheet(nombre_hoja, encabezados=None):
@@ -185,8 +191,8 @@ MENSAJES_ACTUALIZACION_LEGAJO = {
     "2": "Para actualizar datos, escribí a:\n📩 analistarrhh@cristobalcolon.com",
     "3": "Para actualizar datos, escribí a:\n📩 analistarrhh@cristobalcolon.com",
     "4": "Para actualizar datos, escribí a:\n📩 analistarrhh@cristobalcolon.com",
-
 }
+
 
 MENSAJES_AUSENCIA = {
     "1": (
@@ -431,20 +437,30 @@ def procesar_mensaje(telefono, mensaje):
 # ─── ENDPOINT VALIDAR (para Callbell Flow) ───────────────────────────────────
 @app.route("/validar", methods=["POST"])
 def validar():
-    data     = request.json or {}
-    telefono = re.sub(r'\D', '', str(data.get("telefono", "")))
-    dni      = str(data.get("dni", "")).strip()
+    try:
+        data     = request.json or {}
+        telefono = re.sub(r'\D', '', str(data.get("telefono", "")))
+        dni      = str(data.get("dni", "")).strip()
 
-    print(f"Validando → tel: {telefono} | dni: {dni}")
+        print(f"Validando → tel: {telefono} | dni: {dni}")
 
-    if not validar_formato_dni(dni):
-        return jsonify({"valido": False, "motivo": "dni_invalido"}), 200
+        if not validar_formato_dni(dni):
+            return jsonify({"valido": False, "motivo": "dni_invalido"}), 200
 
-    nombre = validar_identidad(telefono, dni)
-    if not nombre:
-        return jsonify({"valido": False, "motivo": "no_encontrado"}), 200
+        print("Conectando a Google Sheets...")
+        nombre = validar_identidad(telefono, dni)
+        print(f"Resultado: {nombre}")
 
-    return jsonify({"valido": True, "nombre": nombre}), 200
+        if not nombre:
+            return jsonify({"valido": False, "motivo": "no_encontrado"}), 200
+
+        return jsonify({"valido": True, "nombre": nombre}), 200
+
+    except Exception as e:
+        print(f"ERROR en /validar: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 # ─── ENDPOINT REGISTRAR (para Callbell Flow) ─────────────────────────────────
 @app.route("/registrar", methods=["POST"])
