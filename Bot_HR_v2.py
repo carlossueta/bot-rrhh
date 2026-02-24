@@ -79,6 +79,11 @@ def validar():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+# ─── WEBHOOK (solo para que Callbell no reciba 404) ──────────────────────────
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    return jsonify({"status": "ok"}), 200
+
 # ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
 @app.route("/", methods=["GET"])
 def health():
