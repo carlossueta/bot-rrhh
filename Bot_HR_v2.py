@@ -173,7 +173,10 @@ def validar():
             "apellido": empleado.get("Apellido", ""),
             "legajo":   empleado.get("Legajo", ""),
             "sucursal": empleado.get("Sucursal", ""),
-            "dni":      empleado.get("Documento", "")
+            "dni":      empleado.get("Documento", ""),
+            "cbu":      empleado.get("Cbu", ""),
+            "banco":    empleado.get("Banco", ""),
+            "telefono": empleado.get("Telefono_Celular", "")
         }), 200
 
     except Exception as e:
