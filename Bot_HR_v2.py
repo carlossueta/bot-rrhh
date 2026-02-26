@@ -21,11 +21,60 @@ SPREADSHEET_ID    = "1nEpSfYuIGeZ-PF9FNNaGuYHN5m1fl-izoEXoStrfqLk"
 GOOGLE_CREDS_JSON = os.environ.get("GOOGLE_CREDS_JSON", "")
 
 # ─── ESTADO DEL TOKEN EN MEMORIA ─────────────────────────────────────────────
+def _cargar_tokens_iniciales():
+    """Carga tokens desde Sheets si existen, sino usa variables de entorno."""
+    access  = os.environ.get("ICHECK_ACCESS_TOKEN", "")
+    refresh = os.environ.get("ICHECK_REFRESH_TOKEN", "")
+    try:
+        a, r = leer_tokens_sheets()
+        if a and r:
+            print(">>> Tokens cargados desde Google Sheets")
+            return a, r
+    except Exception:
+        pass
+    print(">>> Tokens cargados desde variables de entorno")
+    return access, refresh
+
 token_state = {
     "access_token":  os.environ.get("ICHECK_ACCESS_TOKEN", ""),
     "refresh_token": os.environ.get("ICHECK_REFRESH_TOKEN", ""),
     "lock": threading.Lock()
 }
+
+# ─── TOKENS EN GOOGLE SHEETS ────────────────────────────────────────────────
+def leer_tokens_sheets():
+    """Lee los tokens guardados en la hoja Tokens de Google Sheets."""
+    try:
+        client      = get_sheets_client()
+        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        try:
+            ws = spreadsheet.worksheet("Tokens")
+        except gspread.WorksheetNotFound:
+            return None, None
+        datos = ws.get_all_records()
+        if datos:
+            return datos[0].get("access_token", ""), datos[0].get("refresh_token", "")
+    except Exception as e:
+        print(f">>> Error leyendo tokens de Sheets: {e}")
+    return None, None
+
+def guardar_tokens_sheets(access_token, refresh_token):
+    """Guarda los tokens renovados en la hoja Tokens de Google Sheets."""
+    try:
+        client      = get_sheets_client()
+        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        try:
+            ws = spreadsheet.worksheet("Tokens")
+        except gspread.WorksheetNotFound:
+            ws = spreadsheet.add_worksheet(title="Tokens", rows=5, cols=3)
+            ws.append_row(["access_token", "refresh_token", "updated_at"])
+        # Limpiar fila de datos y escribir nuevos tokens
+        ws.resize(rows=2)
+        ws.update("A2:C2", [[access_token, refresh_token, 
+                              __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S")]])
+        print(">>> Tokens guardados en Google Sheets")
+    except Exception as e:
+        print(f">>> Error guardando tokens en Sheets: {e}")
 
 # ─── RENOVACIÓN DE TOKEN ──────────────────────────────────────────────────────
 def renovar_token():
@@ -47,9 +96,12 @@ def renovar_token():
         print(f">>> Respuesta renovación: {r.status_code} | {r.text}")
         r.raise_for_status()
         data = r.json()
+        new_access  = data.get("Access_Token",  token_state["access_token"])
+        new_refresh = data.get("Refresh_Token", token_state["refresh_token"])
         with token_state["lock"]:
-            token_state["access_token"]  = data.get("Access Token",  token_state["access_token"])
-            token_state["refresh_token"] = data.get("Refresh Token", token_state["refresh_token"])
+            token_state["access_token"]  = new_access
+            token_state["refresh_token"] = new_refresh
+        guardar_tokens_sheets(new_access, new_refresh)
         print(">>> Token renovado OK")
     except Exception as e:
         print(f">>> ERROR renovando token: {e}")
@@ -199,6 +251,9 @@ def health():
 
 # ─── INICIO ───────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
+    access, refresh = _cargar_tokens_iniciales()
+    token_state["access_token"]  = access
+    token_state["refresh_token"] = refresh
     programar_renovacion()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
