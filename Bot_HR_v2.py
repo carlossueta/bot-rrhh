@@ -134,14 +134,34 @@ def obtener_empleados_icheck():
     r.raise_for_status()
     return r.json()
 
+def normalizar_variantes_telefono(telefono):
+    """Genera todas las variantes posibles del teléfono para comparar."""
+    t = re.sub(r'\D', '', telefono)
+    variantes = set()
+    variantes.add(t)
+    # Quitar prefijo 549 → queda solo el número local (ej: 1112345678)
+    if t.startswith("549"):
+        variantes.add(t[3:])
+    # Quitar prefijo 54 → queda con el 9 adelante (ej: 91112345678)
+    if t.startswith("54"):
+        variantes.add(t[2:])
+    # Quitar el 9 si empieza con 9 → queda solo el número (ej: 1112345678)
+    if t.startswith("9"):
+        variantes.add(t[1:])
+    # Agregar 549 si no lo tiene
+    if not t.startswith("549"):
+        variantes.add("549" + t.lstrip("9"))
+    return variantes
+
 def buscar_empleado_icheck(telefono, dni):
-    tel_limpio = re.sub(r'\D', '', telefono)
-    dni_limpio = dni.strip()
-    empleados  = obtener_empleados_icheck()
+    dni_limpio  = dni.strip()
+    variantes   = normalizar_variantes_telefono(telefono)
+    print(f">>> Variantes de teléfono a probar: {variantes}")
+    empleados   = obtener_empleados_icheck()
     for emp in empleados:
         tel_emp = re.sub(r'\D', '', str(emp.get("Telefono_Celular", "")))
         dni_emp = str(emp.get("Documento", "")).strip()
-        if tel_emp == tel_limpio and dni_emp == dni_limpio:
+        if tel_emp in variantes and dni_emp == dni_limpio:
             return emp
     return None
 
@@ -159,8 +179,8 @@ def get_sheets_client():
     return gspread.authorize(creds)
 
 def buscar_empleado_sheets(telefono, dni):
-    tel_limpio = re.sub(r'\D', '', telefono)
-    dni_limpio = dni.strip()
+    dni_limpio  = dni.strip()
+    variantes   = normalizar_variantes_telefono(telefono)
     client      = get_sheets_client()
     spreadsheet = client.open_by_key(SPREADSHEET_ID)
     ws          = spreadsheet.worksheet("Empleados")
@@ -168,7 +188,7 @@ def buscar_empleado_sheets(telefono, dni):
     for fila in filas:
         tel_fila = re.sub(r'\D', '', str(fila.get("telefono", "")).strip())
         dni_fila = str(fila.get("dni", "")).strip()
-        if tel_fila == tel_limpio and dni_fila == dni_limpio:
+        if tel_fila in variantes and dni_fila == dni_limpio:
             return {
                 "Nombre":          str(fila.get("nombre", "")),
                 "Apellido":        str(fila.get("apellido", "")),
