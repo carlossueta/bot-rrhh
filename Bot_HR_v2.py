@@ -34,7 +34,7 @@ def renovar_token():
         headers = {
             "Access_Token":  token_state["access_token"],
             "Refresh_Token": token_state["refresh_token"],
-            "Product_Id":    str(PRODUCT_ID),
+            "Product_Id":    "2020",
             "Version":       "1.0.0",
             "Server":        "api.icheck.com.ar",
             "Origin":        "iCheck"
@@ -44,6 +44,7 @@ def renovar_token():
             headers=headers,
             timeout=15
         )
+        print(f">>> Respuesta renovación: {r.status_code} | {r.text}")
         r.raise_for_status()
         data = r.json()
         with token_state["lock"]:
