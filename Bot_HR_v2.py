@@ -31,17 +31,17 @@ token_state = {
 def renovar_token():
     print(">>> Renovando token iCheck...")
     try:
-        headers = {
+        payload = {
             "Access_Token":  token_state["access_token"],
             "Refresh_Token": token_state["refresh_token"],
-            "Product_Id":    "2020",
+            "Product_Id":    PRODUCT_ID,
             "Version":       "1.0.0",
             "Server":        "api.icheck.com.ar",
             "Origin":        "iCheck"
         }
         r = requests.post(
             f"{ICHECK_API_BASE}/RenovacionTokenExterno",
-            headers=headers,
+            json=payload,
             timeout=15
         )
         print(f">>> Respuesta renovación: {r.status_code} | {r.text}")
