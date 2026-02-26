@@ -117,12 +117,12 @@ def buscar_empleado_sheets(telefono, dni):
         dni_fila = str(fila.get("dni", "")).strip()
         if tel_fila == tel_limpio and dni_fila == dni_limpio:
             return {
-                "Nombre":   str(fila.get("nombre", "")),
+                "Nombre":          str(fila.get("nombre", "")),
+                "Apellido":        str(fila.get("apellido", "")),
+                "Legajo":          str(fila.get("legajo", "")),
+                "Sucursal":        str(fila.get("sucursal", "")),
                 "Telefono_Celular": str(fila.get("telefono", "")),
-                "Apellido": "",
-                "Legajo":   "",
-                "Sucursal": "",
-                "Documento": dni_limpio
+                "Documento":       dni_limpio
             }
     return None
 
