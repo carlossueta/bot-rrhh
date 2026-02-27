@@ -1,4 +1,0 @@
-bDfAzWJk9pMj5y8Y3U4RzuzzU9WSXYea.dd284001db7b17a762da3c3ce9edee1e8b98117b69b5b97dd8c484a7e98499cc
-
-CALLBELL_API_TOKEN = os.environ.get("CALLBELL_API_TOKEN", "bDfAzWJk9pMj5y8Y3U4RzuzzU9WSXYea.dd284001db7b17a762da3c3ce9edee1e8b98117b69b5b97dd8c484a7e98499cc")
-EXCEL_FILE = r"c:\Users\carlo\OneDrive\Desktop\Python\BOT HR\empleados.xlsx"
