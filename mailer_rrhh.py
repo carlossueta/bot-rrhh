@@ -113,12 +113,17 @@ def enviar_mail(destinatario, supervisor, datos):
     msg["To"]      = destinatario
     msg.attach(MIMEText(cuerpo, "html"))
 
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(SMTP_USER, SMTP_PASS)
-        server.sendmail(SMTP_USER, destinatario, msg.as_string())
-    print(f">>> Mail enviado a {destinatario} ({supervisor})")
+    # ── MODO TEST: simula envío sin SMTP ──
+    print(f">>> [TEST] Mail simulado a {destinatario} ({supervisor})")
+    print(f">>> [TEST] Asunto: {asunto}")
+    print(f">>> [TEST] Cuerpo HTML generado correctamente")
+    # ── Descomentar cuando IT habilite puerto 587 ──
+    # with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
+    #     server.ehlo()
+    #     server.starttls()
+    #     server.login(SMTP_USER, SMTP_PASS)
+    #     server.sendmail(SMTP_USER, destinatario, msg.as_string())
+    # print(f">>> Mail enviado a {destinatario} ({supervisor})")
 
 # ─── ENDPOINT /notificar ──────────────────────────────────────────────────────
 @app.route("/notificar", methods=["POST"])
