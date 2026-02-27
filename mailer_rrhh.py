@@ -19,7 +19,7 @@ app = Flask(__name__)
 # ─── CONFIGURACIÓN ────────────────────────────────────────────────────────────
 SMTP_SERVER       = os.environ.get("SMTP_SERVER", "webmail.cristobalcolon.com")
 SMTP_PORT         = int(os.environ.get("SMTP_PORT", 25))
-SMTP_USER         = os.environ.get("SMTP_USER", "analistarrhh@cristobalcolon.com")
+SMTP_USER         = os.environ.get("SMTP_USER", "noreply@cristobalcolon.com")
 SMTP_PASS         = os.environ.get("SMTP_PASS", "")
 SPREADSHEET_ID    = "1nEpSfYuIGeZ-PF9FNNaGuYHN5m1fl-izoEXoStrfqLk"
 GOOGLE_CREDS_JSON = os.environ.get("GOOGLE_CREDS_JSON", "")
@@ -107,12 +107,15 @@ def enviar_mail(destinatario, supervisor, datos):
     msg["To"]      = destinatario
     msg.attach(MIMEText(cuerpo, "html"))
 
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.ehlo()
-        server.login(SMTP_USER, SMTP_PASS)
-        server.sendmail(SMTP_USER, destinatario, msg.as_string())
-
-    print(f">>> Mail enviado a {destinatario} ({supervisor})")
+    # ── MODO TEST: simula envío sin SMTP ──
+    print(f">>> [TEST] Mail simulado a {destinatario} ({supervisor})")
+    print(f">>> [TEST] Asunto: {asunto}")
+    print(f">>> [TEST] Cuerpo HTML generado correctamente")
+    # ── Descomentar cuando IT habilite puerto 587 ──
+    # with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
+    #     server.ehlo()
+    #     server.sendmail(SMTP_USER, destinatario, msg.as_string())
+    # print(f">>> Mail enviado a {destinatario} ({supervisor})")
 
 # ─── ENDPOINT /notificar ──────────────────────────────────────────────────────
 @app.route("/notificar", methods=["POST"])
