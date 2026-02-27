@@ -44,11 +44,17 @@ def obtener_email_supervisor(sucursal):
         spreadsheet = client.open_by_key(SPREADSHEET_ID)
         ws          = spreadsheet.worksheet("Supervisores")
         filas       = ws.get_all_records()
+        print(f">>> Filas en Supervisores: {filas}")
+        print(f">>> Buscando sucursal: '{sucursal}'")
         for fila in filas:
-            if str(fila.get("sucursal", "")).strip() == sucursal.strip():
+            suc_fila = str(fila.get("sucursal", "")).strip()
+            print(f">>> Comparando '{suc_fila}' con '{sucursal.strip()}'")
+            if suc_fila == sucursal.strip():
                 return fila.get("email", ""), fila.get("supervisor", "")
     except Exception as e:
         print(f">>> Error buscando supervisor: {e}")
+        import traceback
+        traceback.print_exc()
     return None, None
 
 # ─── ENVÍO DE MAIL ────────────────────────────────────────────────────────────
