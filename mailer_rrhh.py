@@ -7,6 +7,8 @@ import os
 import json
 import re
 import smtplib
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 import gspread
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -17,10 +19,8 @@ from google.oauth2.service_account import Credentials
 app = Flask(__name__)
 
 # ─── CONFIGURACIÓN ────────────────────────────────────────────────────────────
-SMTP_SERVER       = os.environ.get("SMTP_SERVER", "webmail.cristobalcolon.com")
-SMTP_PORT         = int(os.environ.get("SMTP_PORT", 25))
-SMTP_USER         = os.environ.get("SMTP_USER", "noreply@cristobalcolon.com")
-SMTP_PASS         = os.environ.get("SMTP_PASS", "")
+SENDGRID_API_KEY  = os.environ.get("SENDGRID_API_KEY", "")
+SMTP_FROM         = os.environ.get("SMTP_FROM", "noreply@cristobalcolon.com")
 SPREADSHEET_ID    = "1nEpSfYuIGeZ-PF9FNNaGuYHN5m1fl-izoEXoStrfqLk"
 GOOGLE_CREDS_JSON = os.environ.get("GOOGLE_CREDS_JSON", "")
 
@@ -107,23 +107,15 @@ def enviar_mail(destinatario, supervisor, datos):
     </html>
     """
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = asunto
-    msg["From"]    = SMTP_USER
-    msg["To"]      = destinatario
-    msg.attach(MIMEText(cuerpo, "html"))
-
-    # ── MODO TEST: simula envío sin SMTP ──
-    print(f">>> [TEST] Mail simulado a {destinatario} ({supervisor})")
-    print(f">>> [TEST] Asunto: {asunto}")
-    print(f">>> [TEST] Cuerpo HTML generado correctamente")
-    # ── Descomentar cuando IT habilite puerto 587 ──
-    # with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
-    #     server.ehlo()
-    #     server.starttls()
-    #     server.login(SMTP_USER, SMTP_PASS)
-    #     server.sendmail(SMTP_USER, destinatario, msg.as_string())
-    # print(f">>> Mail enviado a {destinatario} ({supervisor})")
+    sg      = SendGridAPIClient(SENDGRID_API_KEY)
+    message = Mail(
+        from_email    = SMTP_FROM,
+        to_emails     = destinatario,
+        subject       = asunto,
+        html_content  = cuerpo
+    )
+    response = sg.send(message)
+    print(f">>> Mail enviado a {destinatario} ({supervisor}) | Status: {response.status_code}")
 
 # ─── ENDPOINT /notificar ──────────────────────────────────────────────────────
 @app.route("/notificar", methods=["POST"])
