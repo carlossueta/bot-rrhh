@@ -53,7 +53,7 @@ def leer_tokens_sheets():
             return None, None
         datos = ws.get_all_records()
         if datos:
-            return datos[0].get("access_token", ""), datos[0].get("refresh_token", "")
+            return str(datos[0].get("access_token", "")).strip(), str(datos[0].get("refresh_token", "")).strip()
     except Exception as e:
         print(f">>> Error leyendo tokens de Sheets: {e}")
     return None, None
@@ -115,9 +115,10 @@ def programar_renovacion():
 # ─── ICHECK: OBTENER EMPLEADOS ────────────────────────────────────────────────
 def obtener_empleados_icheck():
     with token_state["lock"]:
-        access  = token_state["access_token"]
-        refresh = token_state["refresh_token"]
+        access  = token_state["access_token"].strip()
+        refresh = token_state["refresh_token"].strip()
 
+    print(f">>> Usando Access_Token: '{access[:20]}...'")
     headers = {
         "Access_Token":  access,
         "Refresh_Token": refresh,
