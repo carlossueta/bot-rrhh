@@ -226,7 +226,7 @@ def sucursal_en_sheets(sucursal):
     try:
         client      = get_sheets_client()
         spreadsheet = client.open_by_key(SPREADSHEET_ID)
-        ws          = spreadsheet.worksheet("Empleados")
+        ws          = spreadsheet.worksheet("Supervisores")
         filas       = ws.get_all_records()
         sucursales  = {str(f.get("sucursal", "")).strip().lower() for f in filas if f.get("sucursal")}
         return sucursal.strip().lower() in sucursales
