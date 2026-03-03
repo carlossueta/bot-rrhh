@@ -24,6 +24,16 @@ SMTP_FROM         = os.environ.get("SMTP_FROM", "noreply@cristobalcolon.com")
 SPREADSHEET_ID    = "1nEpSfYuIGeZ-PF9FNNaGuYHN5m1fl-izoEXoStrfqLk"
 GOOGLE_CREDS_JSON = os.environ.get("GOOGLE_CREDS_JSON", "")
 
+DESTINATARIOS_VALIDACION = [
+    "Supervisor1@cristobalcolon.com",
+    "Supervisor2@cristobalcolon.com",
+    "Supervisor4@cristobalcolon.com",
+    "Supervisor5@cristobalcolon.com",
+    "asistenteoperaciones@cristobalcolon.com",
+    "gerenteretail@cristobalcolon.com",
+    "jeferetail@cristobalcolon.com",
+]
+
 # ─── GOOGLE SHEETS ────────────────────────────────────────────────────────────
 def get_sheets_client():
     scopes = [
@@ -153,6 +163,112 @@ def notificar():
 
     except Exception as e:
         print(f"ERROR en /notificar: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"enviado": False, "error": str(e)}), 500
+
+# ─── VALIDACIÓN: NOTIFICACIÓN A SUPERVISORES ─────────────────────────────────
+def sucursal_en_sheets(sucursal):
+    """Verifica si la sucursal existe en la columna 'sucursal' del tab Empleados."""
+    if not sucursal:
+        return False
+    try:
+        client      = get_sheets_client()
+        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        ws          = spreadsheet.worksheet("Empleados")
+        filas       = ws.get_all_records()
+        sucursales  = {str(f.get("sucursal", "")).strip().lower() for f in filas if f.get("sucursal")}
+        return sucursal.strip().lower() in sucursales
+    except Exception as e:
+        print(f">>> Error verificando sucursal en Sheets: {e}")
+        return False
+
+@app.route("/notificar_validacion", methods=["POST"])
+def notificar_validacion():
+    try:
+        data     = request.json or {}
+        nombre   = str(data.get("nombre",   "")).strip()
+        apellido = str(data.get("apellido", "")).strip()
+        dni      = str(data.get("dni",      "")).strip()
+        legajo   = str(data.get("legajo",   "")).strip()
+        sucursal = str(data.get("sucursal", "")).strip()
+        telefono = str(data.get("telefono", "")).strip()
+        cbu      = str(data.get("cbu",      "")).strip()
+        banco    = str(data.get("banco",    "")).strip()
+        archivo  = str(data.get("archivo",  "")).strip()
+
+        print(f"Notificando validación → {apellido} {nombre} | Sucursal: {sucursal}")
+
+        if not sucursal_en_sheets(sucursal):
+            print(f">>> Sucursal '{sucursal}' no está en Sheets — email no enviado")
+            return jsonify({"enviado": False, "motivo": "sucursal_no_habilitada"}), 200
+
+        fecha       = datetime.now().strftime("%d/%m/%Y %H:%M")
+        asunto      = f"Solicitud de empleado – {apellido} {nombre} | Sucursal {sucursal}"
+        cuerpo_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #cc0000;">Solicitud de Empleado</h2>
+            <p>Se recibió una nueva solicitud de validación a través del sistema de RRHH:</p>
+            <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
+                <tr style="background-color: #f2f2f2;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nombre y Apellido</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{nombre} {apellido}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>DNI</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{dni}</td>
+                </tr>
+                <tr style="background-color: #f2f2f2;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Legajo</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{legajo}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Sucursal</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{sucursal}</td>
+                </tr>
+                <tr style="background-color: #f2f2f2;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Teléfono</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{telefono}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>CBU</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{cbu}</td>
+                </tr>
+                <tr style="background-color: #f2f2f2;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Banco</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{banco}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Comprobante</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><a href="{archivo}">{archivo}</a></td>
+                </tr>
+                <tr style="background-color: #f2f2f2;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Fecha y Hora</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{fecha}</td>
+                </tr>
+            </table>
+            <br>
+            <p style="font-size: 12px; color: #888;">Este mensaje fue generado automáticamente por el sistema de RRHH de Cristóbal Colón.</p>
+        </body>
+        </html>
+        """
+
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        for destinatario in DESTINATARIOS_VALIDACION:
+            message = Mail(
+                from_email   = SMTP_FROM,
+                to_emails    = destinatario,
+                subject      = asunto,
+                html_content = cuerpo_html
+            )
+            response = sg.send(message)
+            print(f">>> Email enviado a {destinatario} | Status: {response.status_code}")
+
+        return jsonify({"enviado": True, "destinatarios": len(DESTINATARIOS_VALIDACION)}), 200
+
+    except Exception as e:
+        print(f"ERROR en /notificar_validacion: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({"enviado": False, "error": str(e)}), 500
