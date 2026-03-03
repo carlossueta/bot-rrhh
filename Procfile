@@ -1,1 +1,1 @@
-web: gunicorn Bot_HR_v2:app
+web: gunicorn --bind 0.0.0.0:$PORT Bot_HR_v2:app
