@@ -271,10 +271,12 @@ def health():
     return jsonify({"status": "Validador RRHH activo ✅"}), 200
 
 # ─── INICIO ───────────────────────────────────────────────────────────────────
+# Inicializar tokens al cargar el módulo (compatible con gunicorn y ejecución directa)
+_access, _refresh = _cargar_tokens_iniciales()
+token_state["access_token"]  = _access
+token_state["refresh_token"] = _refresh
+programar_renovacion()
+
 if __name__ == "__main__":
-    access, refresh = _cargar_tokens_iniciales()
-    token_state["access_token"]  = access
-    token_state["refresh_token"] = refresh
-    programar_renovacion()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
