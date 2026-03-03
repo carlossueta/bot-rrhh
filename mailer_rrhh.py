@@ -132,34 +132,85 @@ def enviar_mail(destinatario, supervisor, datos):
 def notificar():
     try:
         data     = request.json or {}
-        sucursal = str(data.get("sucursal", "")).strip()
-        nombre   = str(data.get("nombre", "")).strip()
+        nombre   = str(data.get("nombre",   "")).strip()
         apellido = str(data.get("apellido", "")).strip()
-        dni      = str(data.get("dni", "")).strip()
-        legajo   = str(data.get("legajo", "")).strip()
-        motivo   = str(data.get("motivo", "")).strip()
+        dni      = str(data.get("dni",      "")).strip()
+        legajo   = str(data.get("legajo",   "")).strip()
+        sucursal = str(data.get("sucursal", "")).strip()
+        telefono = str(data.get("telefono", "")).strip()
+        cbu      = str(data.get("cbu",      "")).strip()
+        banco    = str(data.get("banco",    "")).strip()
+        archivo  = str(data.get("archivo",  "")).strip()
 
-        print(f"Notificando ausencia → {apellido} {nombre} | Sucursal: {sucursal} | Motivo: {motivo}")
+        print(f"Notificando → {apellido} {nombre} | Sucursal: {sucursal}")
 
-        if not sucursal:
-            return jsonify({"enviado": False, "motivo": "sucursal_vacia"}), 200
+        if not sucursal_en_sheets(sucursal):
+            print(f">>> Sucursal '{sucursal}' no está en Sheets — email no enviado")
+            return jsonify({"enviado": False, "motivo": "sucursal_no_habilitada"}), 200
 
-        email_supervisor, nombre_supervisor = obtener_email_supervisor(sucursal)
+        fecha       = datetime.now().strftime("%d/%m/%Y %H:%M")
+        asunto      = f"Solicitud de empleado – {apellido} {nombre} | Sucursal {sucursal}"
+        cuerpo_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #cc0000;">Solicitud de Empleado</h2>
+            <p>Se recibió una nueva solicitud de validación a través del sistema de RRHH:</p>
+            <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
+                <tr style="background-color: #f2f2f2;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nombre y Apellido</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{nombre} {apellido}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>DNI</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{dni}</td>
+                </tr>
+                <tr style="background-color: #f2f2f2;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Legajo</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{legajo}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Sucursal</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{sucursal}</td>
+                </tr>
+                <tr style="background-color: #f2f2f2;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Teléfono</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{telefono}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>CBU</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{cbu}</td>
+                </tr>
+                <tr style="background-color: #f2f2f2;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Banco</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{banco}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Comprobante</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><a href="{archivo}">{archivo}</a></td>
+                </tr>
+                <tr style="background-color: #f2f2f2;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Fecha y Hora</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{fecha}</td>
+                </tr>
+            </table>
+            <br>
+            <p style="font-size: 12px; color: #888;">Este mensaje fue generado automáticamente por el sistema de RRHH de Cristóbal Colón.</p>
+        </body>
+        </html>
+        """
 
-        if not email_supervisor:
-            print(f">>> No se encontró supervisor para sucursal: {sucursal}")
-            return jsonify({"enviado": False, "motivo": "supervisor_no_encontrado"}), 200
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        for destinatario in DESTINATARIOS_VALIDACION:
+            message = Mail(
+                from_email   = SMTP_FROM,
+                to_emails    = destinatario,
+                subject      = asunto,
+                html_content = cuerpo_html
+            )
+            response = sg.send(message)
+            print(f">>> Email enviado a {destinatario} | Status: {response.status_code}")
 
-        enviar_mail(email_supervisor, nombre_supervisor, {
-            "nombre":   nombre,
-            "apellido": apellido,
-            "dni":      dni,
-            "legajo":   legajo,
-            "sucursal": sucursal,
-            "motivo":   motivo
-        })
-
-        return jsonify({"enviado": True, "supervisor": nombre_supervisor}), 200
+        return jsonify({"enviado": True, "destinatarios": len(DESTINATARIOS_VALIDACION)}), 200
 
     except Exception as e:
         print(f"ERROR en /notificar: {str(e)}")
