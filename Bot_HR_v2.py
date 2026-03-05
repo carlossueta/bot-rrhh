@@ -107,8 +107,13 @@ def renovar_token():
         print(f">>> ERROR renovando token: {e}")
 
 def programar_renovacion():
-    renovar_token()
-    timer = threading.Timer(6 * 3600, programar_renovacion)
+    """Schedules token renewal every 6 hours without renewing on startup."""
+    def _renovar_y_reprogramar():
+        renovar_token()
+        timer = threading.Timer(6 * 3600, _renovar_y_reprogramar)
+        timer.daemon = True
+        timer.start()
+    timer = threading.Timer(6 * 3600, _renovar_y_reprogramar)
     timer.daemon = True
     timer.start()
 
