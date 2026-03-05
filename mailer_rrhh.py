@@ -32,6 +32,7 @@ DESTINATARIOS_VALIDACION = [
     "asistenteoperaciones@cristobalcolon.com",
     "gerenteretail@cristobalcolon.com",
     "jeferetail@cristobalcolon.com",
+    "analistarrhh@cristobalcolon.com"
 ]
 
 # ─── GOOGLE SHEETS ────────────────────────────────────────────────────────────
@@ -137,9 +138,7 @@ def notificar():
         dni      = str(data.get("dni",      "")).strip()
         legajo   = str(data.get("legajo",   "")).strip()
         sucursal = str(data.get("sucursal", "")).strip()
-        telefono = str(data.get("telefono", "")).strip()
-        cbu      = str(data.get("cbu",      "")).strip()
-        banco    = str(data.get("banco",    "")).strip()
+        motivo   = str(data.get("motivo",   "")).strip()
         archivo  = str(data.get("archivo",  "")).strip()
 
         print(f"Notificando → {apellido} {nombre} | Sucursal: {sucursal}")
@@ -149,54 +148,47 @@ def notificar():
             return jsonify({"enviado": False, "motivo": "sucursal_no_habilitada"}), 200
 
         fecha       = datetime.now().strftime("%d/%m/%Y %H:%M")
-        asunto      = f"Solicitud de empleado – {apellido} {nombre} | Sucursal {sucursal}"
+        asunto      = f"Aviso de ausencia - {apellido} {nombre}"
         cuerpo_html = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; color: #333;">
-            <h2 style="color: #cc0000;">Solicitud de Empleado</h2>
-            <p>Se recibió una nueva solicitud de validación a través del sistema de RRHH:</p>
-            <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
-                <tr style="background-color: #f2f2f2;">
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nombre y Apellido</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{nombre} {apellido}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>DNI</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{dni}</td>
-                </tr>
-                <tr style="background-color: #f2f2f2;">
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Legajo</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{legajo}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Sucursal</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{sucursal}</td>
-                </tr>
-                <tr style="background-color: #f2f2f2;">
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Teléfono</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{telefono}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>CBU</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{cbu}</td>
-                </tr>
-                <tr style="background-color: #f2f2f2;">
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Banco</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{banco}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Comprobante</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;"><a href="{archivo}">{archivo}</a></td>
-                </tr>
-                <tr style="background-color: #f2f2f2;">
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Fecha y Hora</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{fecha}</td>
-                </tr>
-            </table>
-            <br>
-            <p style="font-size: 12px; color: #888;">Este mensaje fue generado automáticamente por el sistema de RRHH de Cristóbal Colón.</p>
-        </body>
-        </html>
+    <html>
+    <body style="font-family: Arial, sans-serif; color: #333;">
+        <h2 style="color: #cc0000;">Aviso de Ausencia</h2>
+        <p>Estimado/a <strong>Supervisor/a</strong>,</p>
+        <p>Se informa la siguiente ausencia registrada a través del sistema de RRHH:</p>
+        <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
+            <tr style="background-color: #f2f2f2;">
+                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nombre y Apellido</strong></td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{nombre} {apellido}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;"><strong>DNI</strong></td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{dni}</td>
+            </tr>
+            <tr style="background-color: #f2f2f2;">
+                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Legajo</strong></td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{legajo}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Sucursal</strong></td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{sucursal}</td>
+            </tr>
+            <tr style="background-color: #f2f2f2;">
+                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Motivo</strong></td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{motivo}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Archivo</strong></td>
+                <td style="padding: 8px; border: 1px solid #ddd;"><a href="{archivo}">{archivo}</a></td>
+            </tr>
+            <tr style="background-color: #f2f2f2;">
+                <td style="padding: 8px; border: 1px solid #ddd;"><strong>Fecha y Hora</strong></td>
+                <td style="padding: 8px; border: 1px solid #ddd;">{fecha}</td>
+            </tr>
+        </table>
+        <br>
+        <p style="font-size: 12px; color: #888;">Este mensaje fue generado automáticamente por el sistema de RRHH de Cristóbal Colón.</p>
+    </body>
+    </html>
         """
 
         sg = SendGridAPIClient(SENDGRID_API_KEY)
@@ -244,8 +236,6 @@ def notificar_validacion():
         legajo   = str(data.get("legajo",   "")).strip()
         sucursal = str(data.get("sucursal", "")).strip()
         telefono = str(data.get("telefono", "")).strip()
-        cbu      = str(data.get("cbu",      "")).strip()
-        banco    = str(data.get("banco",    "")).strip()
         archivo  = str(data.get("archivo",  "")).strip()
 
         print(f"Notificando validación → {apellido} {nombre} | Sucursal: {sucursal}")
@@ -281,14 +271,6 @@ def notificar_validacion():
                 <tr style="background-color: #f2f2f2;">
                     <td style="padding: 8px; border: 1px solid #ddd;"><strong>Teléfono</strong></td>
                     <td style="padding: 8px; border: 1px solid #ddd;">{telefono}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>CBU</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{cbu}</td>
-                </tr>
-                <tr style="background-color: #f2f2f2;">
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Banco</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">{banco}</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px; border: 1px solid #ddd;"><strong>Comprobante</strong></td>
