@@ -119,6 +119,13 @@ def programar_renovacion():
 
 # ─── ICHECK: OBTENER EMPLEADOS ────────────────────────────────────────────────
 def obtener_empleados_icheck():
+    # Always reload token from Sheets to get the latest, even if the in-memory one is stale
+    a, r = leer_tokens_sheets()
+    if a and r:
+        with token_state["lock"]:
+            token_state["access_token"]  = a
+            token_state["refresh_token"] = r
+
     with token_state["lock"]:
         access  = token_state["access_token"].strip()
         refresh = token_state["refresh_token"].strip()
