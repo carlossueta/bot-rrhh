@@ -71,13 +71,15 @@ def renovar_tokens():
     log.info("🔄 Iniciando renovación de tokens iCheck")
     try:
         access_token, refresh_token = leer_tokens()
+        log.info(f">>> Access_Token leído:  '{access_token[:30]}...'")
+        log.info(f">>> Refresh_Token leído: '{refresh_token[:30]}...'")
 
         resp = requests.post(
             ICHECK_TOKEN_URL,
             json={
-                "Access Token":  access_token,
-                "Refresh Token": refresh_token,
-                "Product Id":    2020,
+                "Access_Token":  access_token,
+                "Refresh_Token": refresh_token,
+                "Product_Id":    2020,
                 "Version":       "1.0.0",
                 "Server":        "api.icheck.com.ar",
                 "Origin":        "iCheck",
