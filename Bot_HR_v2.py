@@ -1,12 +1,11 @@
 """
 Webhook de validación para Callbell + API iCheck con fallback a Google Sheets
-Renueva el token de iCheck automáticamente cada 6 horas
+Lee el token de acceso directamente desde Google Sheets en cada llamada
 """
 
 import re
 import os
 import json
-import threading
 import requests
 import gspread
 from google.oauth2.service_account import Credentials
@@ -16,34 +15,12 @@ app = Flask(__name__)
 
 # ─── CONFIGURACIÓN ────────────────────────────────────────────────────────────
 ICHECK_API_BASE   = "http://api.icheck.com.ar/api"
-PRODUCT_ID        = int(os.environ.get("ICHECK_PRODUCT_ID", 2020))
 SPREADSHEET_ID    = "1nEpSfYuIGeZ-PF9FNNaGuYHN5m1fl-izoEXoStrfqLk"
 GOOGLE_CREDS_JSON = os.environ.get("GOOGLE_CREDS_JSON", "")
 
-# ─── ESTADO DEL TOKEN EN MEMORIA ─────────────────────────────────────────────
-def _cargar_tokens_iniciales():
-    """Carga tokens desde Sheets si existen, sino usa variables de entorno."""
-    access  = os.environ.get("ICHECK_ACCESS_TOKEN", "")
-    refresh = os.environ.get("ICHECK_REFRESH_TOKEN", "")
-    try:
-        a, r = leer_tokens_sheets()
-        if a and r:
-            print(">>> Tokens cargados desde Google Sheets")
-            return a, r
-    except Exception:
-        pass
-    print(">>> Tokens cargados desde variables de entorno")
-    return access, refresh
-
-token_state = {
-    "access_token":  os.environ.get("ICHECK_ACCESS_TOKEN", ""),
-    "refresh_token": os.environ.get("ICHECK_REFRESH_TOKEN", ""),
-    "lock": threading.Lock()
-}
-
 # ─── TOKENS EN GOOGLE SHEETS ────────────────────────────────────────────────
 def leer_tokens_sheets():
-    """Lee los tokens guardados en la hoja Tokens de Google Sheets."""
+    """Lee los tokens desde la hoja Tokens de Google Sheets."""
     try:
         client      = get_sheets_client()
         spreadsheet = client.open_by_key(SPREADSHEET_ID)
@@ -58,77 +35,12 @@ def leer_tokens_sheets():
         print(f">>> Error leyendo tokens de Sheets: {e}")
     return None, None
 
-def guardar_tokens_sheets(access_token, refresh_token):
-    """Guarda los tokens renovados en la hoja Tokens de Google Sheets."""
-    try:
-        client      = get_sheets_client()
-        spreadsheet = client.open_by_key(SPREADSHEET_ID)
-        try:
-            ws = spreadsheet.worksheet("Tokens")
-        except gspread.WorksheetNotFound:
-            ws = spreadsheet.add_worksheet(title="Tokens", rows=5, cols=3)
-            ws.append_row(["access_token", "refresh_token", "updated_at"])
-        # Limpiar fila de datos y escribir nuevos tokens
-        ws.resize(rows=2)
-        ws.update("A2:C2", [[access_token, refresh_token, 
-                              __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S")]])
-        print(">>> Tokens guardados en Google Sheets")
-    except Exception as e:
-        print(f">>> Error guardando tokens en Sheets: {e}")
-
-# ─── RENOVACIÓN DE TOKEN ──────────────────────────────────────────────────────
-def renovar_token():
-    print(">>> Renovando token iCheck...")
-    try:
-        payload = {
-            "Access_Token":  token_state["access_token"],
-            "Refresh_Token": token_state["refresh_token"],
-            "Product_Id":    PRODUCT_ID,
-            "Version":       "1.0.0",
-            "Server":        "api.icheck.com.ar",
-            "Origin":        "iCheck"
-        }
-        r = requests.post(
-            f"{ICHECK_API_BASE}/RenovacionTokenExterno",
-            json=payload,
-            timeout=15
-        )
-        print(f">>> Respuesta renovación: {r.status_code} | {r.text}")
-        r.raise_for_status()
-        data = r.json()
-        new_access  = data.get("Access_Token",  token_state["access_token"])
-        new_refresh = data.get("Refresh_Token", token_state["refresh_token"])
-        with token_state["lock"]:
-            token_state["access_token"]  = new_access
-            token_state["refresh_token"] = new_refresh
-        guardar_tokens_sheets(new_access, new_refresh)
-        print(">>> Token renovado OK")
-    except Exception as e:
-        print(f">>> ERROR renovando token: {e}")
-
-def programar_renovacion():
-    """Schedules token renewal every 6 hours without renewing on startup."""
-    def _renovar_y_reprogramar():
-        renovar_token()
-        timer = threading.Timer(6 * 3600, _renovar_y_reprogramar)
-        timer.daemon = True
-        timer.start()
-    timer = threading.Timer(6 * 3600, _renovar_y_reprogramar)
-    timer.daemon = True
-    timer.start()
-
 # ─── ICHECK: OBTENER EMPLEADOS ────────────────────────────────────────────────
 def obtener_empleados_icheck():
-    # Always reload token from Sheets to get the latest, even if the in-memory one is stale
-    a, r = leer_tokens_sheets()
-    if a and r:
-        with token_state["lock"]:
-            token_state["access_token"]  = a
-            token_state["refresh_token"] = r
-
-    with token_state["lock"]:
-        access  = token_state["access_token"].strip()
-        refresh = token_state["refresh_token"].strip()
+    # Always read the latest token directly from Sheets
+    access, refresh = leer_tokens_sheets()
+    if not access or not refresh:
+        raise Exception("No se pudieron leer los tokens desde Google Sheets")
 
     print(f">>> Usando Access_Token: '{access[:20]}...'")
     headers = {
@@ -283,12 +195,6 @@ def health():
     return jsonify({"status": "Validador RRHH activo ✅"}), 200
 
 # ─── INICIO ───────────────────────────────────────────────────────────────────
-# Inicializar tokens al cargar el módulo (compatible con gunicorn y ejecución directa)
-_access, _refresh = _cargar_tokens_iniciales()
-token_state["access_token"]  = _access
-token_state["refresh_token"] = _refresh
-programar_renovacion()
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

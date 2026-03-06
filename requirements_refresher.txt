@@ -1,0 +1,6 @@
+# requirements para token_refresher (Worker Service en Render)
+# El bot-rrhh existente ya tiene requests, gspread y google-auth
+requests==2.31.0
+gspread==6.1.2
+google-auth==2.29.0
+APScheduler==3.10.4
