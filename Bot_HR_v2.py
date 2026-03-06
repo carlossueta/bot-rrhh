@@ -8,8 +8,11 @@ import os
 import json
 import requests
 import gspread
+from datetime import datetime
 from google.oauth2.service_account import Credentials
 from flask import Flask, request, jsonify
+
+DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 app = Flask(__name__)
 
@@ -175,7 +178,8 @@ def validar():
             "dni":      empleado.get("Documento", ""),
             "cbu":      empleado.get("Cbu", ""),
             "banco":    empleado.get("Banco", ""),
-            "telefono": empleado.get("Telefono_Celular", "")
+            "telefono": empleado.get("Telefono_Celular", ""),
+            "dia":      DIAS_SEMANA[datetime.now().weekday()]
         }), 200
 
     except Exception as e:
