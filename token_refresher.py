@@ -25,8 +25,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────────────────────────
-ICHECK_TOKEN_URL   = "https://api.icheck-in.com/oauth/token"
-ICHECK_PRODUCT_ID  = os.environ["ICHECK_PRODUCT_ID"]
+ICHECK_TOKEN_URL   = "http://api.icheck.com.ar/api/RenovacionTokenExterno"
 SPREADSHEET_ID     = "1nEpSfYuIGeZ-PF9FNNaGuYHN5m1fl-izoEXoStrfqLk"
 TOKENS_SHEET       = "Tokens"
 CELL_ACCESS_TOKEN  = "A2"
@@ -46,13 +45,14 @@ def _sheets_client():
     return gspread.authorize(creds)
 
 
-def leer_refresh_token() -> str:
-    client = _sheets_client()
-    sheet  = client.open_by_key(SPREADSHEET_ID).worksheet(TOKENS_SHEET)
-    token  = sheet.acell(CELL_REFRESH_TOKEN).value
-    if not token:
-        raise ValueError("refresh_token vacío en Sheets (B2 de la hoja Tokens). Cargarlo manualmente la primera vez.")
-    return token.strip()
+def leer_tokens() -> tuple:
+    client  = _sheets_client()
+    sheet   = client.open_by_key(SPREADSHEET_ID).worksheet(TOKENS_SHEET)
+    access  = sheet.acell(CELL_ACCESS_TOKEN).value
+    refresh = sheet.acell(CELL_REFRESH_TOKEN).value
+    if not access or not refresh:
+        raise ValueError("Tokens vacíos en Sheets (A2/B2 de la hoja Tokens). Cargarlos manualmente la primera vez.")
+    return access.strip(), refresh.strip()
 
 
 def guardar_tokens(access_token: str, refresh_token: str):
@@ -70,14 +70,17 @@ def renovar_tokens():
     log.info("━" * 50)
     log.info("🔄 Iniciando renovación de tokens iCheck")
     try:
-        refresh_token = leer_refresh_token()
+        access_token, refresh_token = leer_tokens()
 
         resp = requests.post(
             ICHECK_TOKEN_URL,
             json={
-                "grant_type":    "refresh_token",
-                "refresh_token": refresh_token,
-                "product_id":    ICHECK_PRODUCT_ID,
+                "Access Token":  access_token,
+                "Refresh Token": refresh_token,
+                "Product Id":    2020,
+                "Version":       "1.0.0",
+                "Server":        "api.icheck.com.ar",
+                "Origin":        "iCheck",
             },
             timeout=30,
         )
@@ -86,15 +89,16 @@ def renovar_tokens():
             log.error(f"❌ iCheck respondió {resp.status_code}: {resp.text}")
             return
 
-        data         = resp.json()
-        access_token = data.get("access_token") or data.get("token")
-        new_refresh  = data.get("refresh_token") or refresh_token  # algunos endpoints no devuelven nuevo refresh
+        data        = resp.json()
+        log.info(f">>> Respuesta iCheck: {data}")
+        new_access  = data.get("Access_Token")
+        new_refresh = data.get("Refresh_Token") or refresh_token
 
-        if not access_token:
-            log.error(f"Respuesta sin access_token: {data}")
+        if not new_access:
+            log.error(f"Respuesta sin Access_Token: {data}")
             return
 
-        guardar_tokens(access_token, new_refresh)
+        guardar_tokens(new_access, new_refresh)
         log.info("✅ Renovación completada")
 
     except Exception as e:
