@@ -29,9 +29,9 @@ ICHECK_TOKEN_URL   = "https://api.icheck-in.com/oauth/token"
 ICHECK_PRODUCT_ID  = os.environ["ICHECK_PRODUCT_ID"]
 SPREADSHEET_ID     = "1nEpSfYuIGeZ-PF9FNNaGuYHN5m1fl-izoEXoStrfqLk"
 TOKENS_SHEET       = "Tokens"
-CELL_ACCESS_TOKEN  = "B1"
+CELL_ACCESS_TOKEN  = "A2"
 CELL_REFRESH_TOKEN = "B2"
-CELL_UPDATED_AT    = "B3"
+CELL_UPDATED_AT    = "C2"
 INTERVALO_HORAS    = 4
 
 
@@ -51,7 +51,7 @@ def leer_refresh_token() -> str:
     sheet  = client.open_by_key(SPREADSHEET_ID).worksheet(TOKENS_SHEET)
     token  = sheet.acell(CELL_REFRESH_TOKEN).value
     if not token:
-        raise ValueError("refresh_token vacío en Sheets (B2). Cargarlo manualmente la primera vez.")
+        raise ValueError("refresh_token vacío en Sheets (B2 de la hoja Tokens). Cargarlo manualmente la primera vez.")
     return token.strip()
 
 
