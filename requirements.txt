@@ -6,3 +6,4 @@ google-auth
 gunicorn
 sendgrid
 apscheduler
+cloudinary
