@@ -32,7 +32,9 @@ DESTINATARIOS_VALIDACION = [
     "asistenteoperaciones@cristobalcolon.com",
     "gerenteretail@cristobalcolon.com",
     "jeferetail@cristobalcolon.com",
-    "analistarrhh@cristobalcolon.com"
+    "analistarrhh@cristobalcolon.com",
+    "gerenterecursoshumanos@cristobalcolon.com",
+    "analistapayroll@cristobalcolon.com"
 ]
 
 # ─── GOOGLE SHEETS ────────────────────────────────────────────────────────────
